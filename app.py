@@ -20,7 +20,7 @@ def extrair_categoria(desc):
     categorias = {
         'supermercado': ['supermercado', 'mercado', 'carrefour', 'extra', 'pao de acucar', 'atacadao', 'pao'],
         'restaurante': ['restaurante', 'bar', 'cafe', 'padaria', 'mcdonald', 'burger king', 'pizza'],
-        'transporte': ['uber', '99', 'taxi', 'combustivel', 'posto', 'gasolina', 'metro', 'onibus'],
+        'transporte': ['uber', '99', 'taxi', 'combustivel', 'posto', 'gasolina', 'metro', 'onibus', 'gas', 'passagem'],
         'saude': ['farmacia', 'drogaria', 'medico', 'hospital', 'clinica', 'dentista'],
         'lazer': ['cinema', 'show', 'teatro', 'parque', 'viagem', 'hotel'],
         'educacao': ['escola', 'faculdade', 'curso', 'livro', 'material escolar'],
