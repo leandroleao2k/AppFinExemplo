@@ -14,6 +14,10 @@ st.title("Dashboard de Análise Financeira")
 st.sidebar.header("Upload do Extrato Bancário")
 uploaded_file = st.sidebar.file_uploader("Escolha o arquivo CSV do extrato", type=["csv"])
 
+# Controle de meses de previsão na barra lateral
+st.sidebar.header("Configuração de Previsão")
+num_meses_previsao = st.sidebar.slider("Quantos meses para prever?", min_value=1, max_value=12, value=3)
+
 # Categoria inteligente
 def extrair_categoria(desc):
     desc = str(desc).lower()
@@ -37,7 +41,7 @@ def extrair_categoria(desc):
 if uploaded_file:
     df = pd.read_csv(uploaded_file, sep=';', header=0)
     df.rename(columns={'DATA': 'Data', 'VALOR': 'Valor', 'DESC': 'Desc'}, inplace=True)
-    df['Data'] = pd.to_datetime(df['Data'], format='%m/%d/%Y', dayfirst=False, errors='coerce')
+    df['Data'] = pd.to_datetime(df['Data'], format='%d/%m/%Y', dayfirst=False, errors='coerce')
     df['Valor'] = df['Valor'].astype(str).str.replace('.', '')
     df['Valor'] = df['Valor'].astype(str).str.replace(',', '.').str.replace(' ', '')
     df['Valor'] = pd.to_numeric(df['Valor'], errors='coerce')
@@ -79,21 +83,34 @@ if uploaded_file:
 
     # Previsão de despesas com Prophet
     st.subheader('Previsão de Despesas para os Próximos Meses (Prophet)')
-    df_despesa = df[df['Valor'] < 0].groupby('Data')['Valor'].sum().reset_index()
-    df_despesa['Valor'] = -1*df_despesa['Valor']
-    df_despesa.rename(columns={'Data': 'ds', 'Valor': 'y'}, inplace=True)
-    if len(df_despesa) > 2:
+    # Agrupa despesas por mês antes de alimentar o Prophet
+    df_despesa = df[df['Valor'] < 0].copy()
+    df_despesa['Data'] = pd.to_datetime(df_despesa['Data'])
+    df_despesa['AnoMes'] = df_despesa['Data'].dt.to_period('M').dt.to_timestamp()
+    df_despesa_mensal = df_despesa.groupby('AnoMes')['Valor'].sum().reset_index()
+    df_despesa_mensal['Valor'] = -1 * df_despesa_mensal['Valor']  # Torna positivo para previsão
+    df_despesa_mensal.rename(columns={'AnoMes': 'ds', 'Valor': 'y'}, inplace=True)
+    if len(df_despesa_mensal) > 2:
         m = Prophet()
-        m.fit(df_despesa)
-        future = m.make_future_dataframe(periods=6, freq='M')
+        m.fit(df_despesa_mensal)
+        future = m.make_future_dataframe(periods=num_meses_previsao, freq='M')
         forecast = m.predict(future)
         fig_prophet = go.Figure()
-        fig_prophet.add_trace(go.Scatter(x=df_despesa['ds'], y=df_despesa['y'], name='Despesa Real', mode='lines+markers'))
+        fig_prophet.add_trace(go.Scatter(x=df_despesa_mensal['ds'], y=df_despesa_mensal['y'], name='Despesa Real', mode='lines+markers'))
         fig_prophet.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], name='Previsão', mode='lines'))
         fig_prophet.update_layout(title='Previsão de Despesas (Prophet)', xaxis_title='Data', yaxis_title='Despesa (R$)', hovermode='x unified')
         st.plotly_chart(fig_prophet, use_container_width=True)
+        # Somatório do total previsto para os meses futuros agrupado por mês
+        previsao_futura = forecast[['ds', 'yhat']].tail(num_meses_previsao)
+        previsao_futura['Mes'] = previsao_futura['ds'].dt.strftime('%Y-%m')
+        previsao_por_mes = previsao_futura.groupby('Mes')['yhat'].sum().reset_index()
+        previsao_por_mes.rename(columns={'yhat': 'Despesa Prevista'}, inplace=True)
+        st.markdown(f"**Previsão de gastos agrupada por mês:**")
+        st.dataframe(previsao_por_mes)
+        total_previsto = previsao_futura['yhat'].sum()
+        st.markdown(f"**Total previsto para os próximos {num_meses_previsao} meses:** R$ {total_previsto:,.2f}")
         st.write('Próximos meses previstos:')
-        st.dataframe(forecast[['ds', 'yhat']].tail(6).rename(columns={'ds': 'Data', 'yhat': 'Despesa Prevista'}))
+        st.dataframe(previsao_futura.rename(columns={'ds': 'Data', 'yhat': 'Despesa Prevista'}))
     else:
         st.warning('Não há dados suficientes para previsão com Prophet.')
 
@@ -109,5 +126,6 @@ if uploaded_file:
     """)
 else:
     st.info('Faça upload de um arquivo CSV para iniciar a análise financeira.')
+
 
 # Fim do código

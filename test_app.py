@@ -1,3 +1,4 @@
+from typing import Literal
 from app import extrair_categoria
 import pandas as pd
 from prophet import Prophet
@@ -39,7 +40,7 @@ def test_previsao_despesa_proximo_mes():
             ("Livraria Cultura", "Educacao"),
         ]
     )
-    def test_extrair_categoria(desc, expected):
+    def test_extrair_categoria(desc: Literal['Supermercado Carrefour'] | Literal['Pagamento Uber'] | Literal['Consulta Medico'] | Literal['Cinema Center'] | Literal['Mensalidade Escola'] | Literal['Aluguel Apartamento'] | Literal['Tarifa Banco'] | Literal['Compra Aleatoria'] | Literal['Padaria do Bairro'] | Literal['Livraria Cultura'], expected: Literal['Supermercado'] | Literal['Transporte'] | Literal['Saude'] | Literal['Lazer'] | Literal['Educacao'] | Literal['Moradia'] | Literal['Servicos'] | Literal['Outros'] | Literal['Restaurante']):
         """Testa a categorização automática de descrições."""
         assert extrair_categoria(desc) == expected
 
@@ -84,3 +85,4 @@ def test_previsao_despesa_proximo_mes():
         with pytest.raises(Exception):
             m = Prophet()
             m.fit(df_despesa)
+            
